@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motor Simulation Lab - Ultimate</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0D0204;
+    --bg-panel: rgba(26, 5, 10, 0.65);
+    --bg-card: rgba(38, 8, 15, 0.6);
+    --bg-hover: rgba(64, 15, 25, 0.8);
+    --border: rgba(227, 28, 71, 0.2);
+    --border-light: rgba(227, 28, 71, 0.35);
+    
+    --text-main: #FFFFFF;
+    --text-muted: #BFA8AF;
+    
+    /* Neon & Bordo Colors */
+    --accent: #E31C47;
+    --accent-glow: rgba(227, 28, 71, 0.4);
+    --secondary: #8A0524;
+    --danger: #FF1744;
+    --danger-glow: rgba(255, 23, 68, 0.4);
+    --success: #00FF66;
+    --warning: #FFEA00;
+    
+    --gradient-btn: linear-gradient(135deg, #E31C47 0%, #8A0524 100%);
+    --gradient-run: linear-gradient(135deg, #8A0524 0%, #E31C47 100%);
+    --gradient-stop: linear-gradient(135deg, #FF1744 0%, #FF6B00 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body { 
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; 
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Aurora Background Effect */
+  body::before, body::after {
+    content: ''; position: absolute; width: 600px; height: 600px;
+    border-radius: 50%; filter: blur(120px); opacity: 0.15; z-index: -1;
+    animation: float 15s infinite alternate ease-in-out;
+  }
+  body::before { background: var(--secondary); top: -10%; left: -10%; }
+  body::after { background: var(--accent); bottom: -10%; right: -10%; animation-delay: -5s; }
+
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(100px, 50px) scale(1.2); }
+  }
+  
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(227, 28, 71, 0.3); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  .glass {
+    background: var(--bg-panel);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .header-bar {
+    background: rgba(4, 15, 8, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    display: flex; align-items: center; gap: 16px;
+    z-index: 10; flex-wrap: wrap;
+  }
+
+  .header-title {
+    font-size: 18px; font-weight: 800;
+    background: var(--gradient-run);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px; margin-right: 12px;
+    display: flex; align-items: center; gap: 8px;
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--text-muted); transition: all 0.4s ease;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+  }
+  .status-dot.active {
+    background: var(--success);
+    box-shadow: 0 0 12px var(--success), inset 0 0 4px rgba(255,255,255,0.5);
+    animation: pulse-dot 2s infinite;
+  }
+  .status-dot.fault {
+    background: var(--danger);
+    box-shadow: 0 0 12px var(--danger), inset 0 0 4px rgba(255,255,255,0.5);
+    animation: pulse-dot-fault 0.5s infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes pulse-dot-fault { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  .sound-btn {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-muted); padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s;
+    font-family: 'Outfit', sans-serif;
+  }
+  .sound-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .sound-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(227, 28, 71, 0.1); box-shadow: 0 0 10px rgba(227, 28, 71, 0.2); }
+
+  .selected-tag {
+    display: inline-flex; align-items: center; padding: 6px 12px;
+    border-radius: 8px; font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .tag-async { background: rgba(227, 28, 71, 0.1); color: var(--accent); border: 1px solid rgba(227, 28, 71, 0.3); }
+  .tag-sync  { background: rgba(138, 5, 36, 0.15); color: #FF4D79; border: 1px solid rgba(138, 5, 36, 0.3); }
+
+  .main-layout { display: grid; grid-template-columns: 1fr; flex: 1; overflow-y: auto; }
+  @media (min-width: 1024px) {
+    .main-layout { grid-template-columns: 320px 1fr 340px; overflow: hidden; }
+    .left-panel, .right-panel, .center-panel { overflow-y: auto; }
+  }
+
+  .left-panel, .right-panel { padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+  @media (min-width: 1024px) {
+    .left-panel { border-right: 1px solid var(--border); background: var(--bg-panel); backdrop-filter: blur(20px);}
+    .right-panel { border-left: 1px solid var(--border); background: var(--bg-panel); backdrop-filter: blur(20px);}
+  }
+
+  .center-panel { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .panel-label {
+    font-size: 12px; font-weight: 700; color: var(--text-main);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    opacity: 0.9;
+  }
+
+  .motor-btn {
+    width: 100%; padding: 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text-main);
+    cursor: pointer; border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left; display: flex; flex-direction: column; gap: 6px;
+  }
+  .motor-btn.active {
+    border-color: var(--accent); background: rgba(227, 28, 71, 0.08);
+    box-shadow: 0 0 20px rgba(227, 28, 71, 0.15), inset 0 0 0 1px var(--accent);
+  }
+  .motor-btn:hover:not(.active) { border-color: var(--border-light); background: var(--bg-hover); transform: translateY(-3px); }
+  .motor-btn .btn-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px;}
+  .motor-btn .btn-sub { font-size: 12px; color: var(--text-muted); font-weight: 400;}
+
+  .load-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .load-btn {
+    padding: 14px 6px; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text-muted);
+    font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 12px;
+    transition: all 0.3s; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .load-btn span { font-size: 11px; opacity: 0.7; font-weight: 400;}
+  
+  .load-btn.active-R { border-color: var(--warning); color: var(--warning); background: rgba(255, 234, 0, 0.1); box-shadow: 0 0 15px rgba(255, 234, 0, 0.15);}
+  .load-btn.active-L { border-color: #00E5FF; color: #00E5FF; background: rgba(0, 229, 255, 0.1); box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);}
+  .load-btn.active-C { border-color: var(--success); color: var(--success); background: rgba(0, 255, 102, 0.1); box-shadow: 0 0 15px rgba(0, 255, 102, 0.15);}
+  .load-btn.active-N { border-color: #B100FF; color: #B100FF; background: rgba(177, 0, 255, 0.1); box-shadow: 0 0 15px rgba(177, 0, 255, 0.15);}
+  .load-btn:hover:not([class*="active-"]) { border-color: var(--border-light); color: var(--text-main); transform: translateY(-2px);}
+
+  .fault-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px; background: rgba(255, 23, 68, 0.05);
+    border: 1px solid rgba(255, 23, 68, 0.2); border-radius: 12px;
+    cursor: pointer; transition: all 0.3s;
+  }
+  .fault-toggle:hover { background: rgba(255, 23, 68, 0.1); transform: translateY(-2px);}
+  .fault-toggle.active { background: rgba(255, 23, 68, 0.15); border-color: var(--danger); box-shadow: 0 0 20px rgba(255, 23, 68, 0.2); }
+  .fault-label { font-size: 14px; font-weight: 700; color: #FF8A9F; display:flex; align-items:center; gap:8px;}
+  .fault-toggle.active .fault-label { color: var(--danger); }
+  
+  .switch {
+    position: relative; width: 44px; height: 24px;
+    background: rgba(255,255,255,0.1); border-radius: 20px; transition: 0.3s; border: 1px solid rgba(255,255,255,0.2);
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; background: white; border-radius: 50%; transition: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+  .fault-toggle.active .switch { background: var(--danger); border-color: var(--danger);}
+  .fault-toggle.active .switch::after { transform: translateX(20px); }
+
+  /* CUSTOM SLIDERS */
+  input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin-top: 12px; }
+  input[type=range]:focus { outline: none; }
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 8px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    height: 22px; width: 22px; border-radius: 50%;
+    background: var(--text-main); cursor: pointer; -webkit-appearance: none;
+    margin-top: -8px; box-shadow: 0 0 15px var(--accent), 0 2px 6px rgba(0,0,0,0.5);
+    border: 3px solid var(--accent); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+  
+  .slider-header { display: flex; justify-content: space-between; align-items: flex-end; }
+  .slider-label { font-size: 13px; color: var(--text-muted); font-weight: 500;}
+  .slider-value { font-size: 16px; color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums;}
+  input[type=range]:disabled::-webkit-slider-thumb { background: #555; border-color: #777; box-shadow: none; cursor: not-allowed; }
+  input[type=range]:disabled::-webkit-slider-runnable-track { cursor: not-allowed; }
+
+  /* CANVAS ACTION BADGE (Motor İçi Buton Etiketi) */
+  .canvas-action-badge {
+    position: absolute; top: 16px; left: 16px;
+    background: rgba(227, 28, 71, 0.15); border: 1px solid var(--accent);
+    color: var(--text-main); padding: 8px 14px; border-radius: 8px;
+    font-size: 11px; font-weight: 800; letter-spacing: 1px; z-index: 10;
+    pointer-events: none; display: flex; align-items: center; gap: 6px;
+    transition: all 0.3s; backdrop-filter: blur(4px);
+  }
+  .canvas-action-badge.running {
+    background: rgba(255, 23, 68, 0.15); border-color: var(--danger);
+    color: #FF8A9F; animation: pulse-badge 2s infinite;
+  }
+  @keyframes pulse-badge {
+    0%, 100% { box-shadow: 0 0 10px rgba(255,23,68,0.2); }
+    50% { box-shadow: 0 0 20px rgba(255,23,68,0.5); }
+  }
+
+  /* CENTER CANVAS WRAPPERS */
+  .canvas-wrap {
+    border-radius: 16px; padding: 20px; display: flex; flex-direction: column;
+    width: 100%; position: relative; overflow: hidden;
+  }
+  .motor-canvas-wrap { 
+    flex: 0 0 350px; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .motor-canvas-wrap:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 15px 40px rgba(227, 28, 71, 0.2);
+    border-color: var(--accent);
+  }
+  .motor-canvas-wrap::before {
+      content: ''; position:absolute; top:0; left:0; width:100%; height:100%;
+      background: radial-gradient(circle at center, rgba(227, 28, 71, 0.08) 0%, transparent 70%); z-index:0; pointer-events:none;
+  }
+  .waveform-wrap { flex: 1; min-height: 200px; }
+
+  canvas { width: 100%; display: block; position: relative; z-index: 1;}
+  #motor-canvas { height: 350px; pointer-events: none; } /* let wrap handle click */
+  #wave-canvas { height: 160px; margin-top: 10px; }
+
+  /* RIGHT PANEL METRICS */
+  .metric-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 18px; transition: all 0.3s ease;
+    position: relative; overflow: hidden; cursor: pointer;
+  }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+    background: var(--border-light); transition: 0.3s;
+  }
+  .metric-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  .metric-card:hover::before { background: var(--gradient-btn); }
+  
+  .metric-name {
+    font-size: 11px; color: var(--text-muted); font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .metric-value {
+    font-size: 24px; font-weight: 800; color: var(--text-main);
+    font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+  .metric-unit { font-size: 13px; color: var(--text-muted); font-weight: 500;}
+
+  .gauge-wrap {
+    margin-top: 10px; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .gauge-fill {
+    height: 100%; border-radius: 3px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  /* MODAL STYLES (Formulas) */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    z-index: 1000; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .modal-content {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 30px; max-width: 480px; width: 90%;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(227, 28, 71, 0.2);
+    transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .modal-overlay.show .modal-content { transform: translateY(0); }
+  .modal-close {
+    position: absolute; top: 20px; right: 20px; cursor: pointer;
+    color: var(--text-muted); transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--danger); }
+  .formula-title { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 16px; display:flex; align-items:center; gap:8px;}
+  .formula-box {
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 20px; margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 17px; color: var(--success);
+    text-align: center; letter-spacing: 1px; box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+  }
+  .formula-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; font-weight: 400;}
+
+  /* SPECIAL CARDS: Energy & Phasor */
+  .energy-box {
+    background: rgba(0, 255, 102, 0.05); border: 1px solid rgba(0, 255, 102, 0.2);
+    border-radius: 14px; padding: 16px; margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .energy-col { display: flex; flex-direction: column; gap: 4px; }
+  .energy-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--success); text-shadow: 0 0 10px rgba(0, 255, 102, 0.4);}
+  .energy-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+  
+  .blinking-dot {
+    display: inline-block; width: 6px; height: 6px; background: var(--success); border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .running .blinking-dot { animation: blink 1s infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .phasor-wrap { border-radius: 16px; padding: 20px; }
+  #phasor-canvas { height: 160px; margin-top: 10px; }
+
+  /* SVG Icons utility */
+  .icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="header-title">
+      Motor Simulation Lab <span style="font-size:11px; padding:3px 8px; background:var(--text-main); color:#000; border-radius:6px; font-weight:900;">ULTIMATE</span>
+    </span>
+    <span id="mode-tag" class="selected-tag tag-async">Induction</span>
+    
+    <button class="sound-btn" id="sound-btn" onclick="toggleSound()">
+      <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      Sound: Off
+    </button>
+  </div>
+  
+  <div class="main-layout">
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+      <div>
+        <div class="panel-label">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Motor Architecture
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <button class="motor-btn active" id="btn-async" onclick="selectMotor('async')">
+            <span class="btn-title">Induction Motor</span>
+            <span class="btn-sub">Slip-Ring / Squirrel Cage Simulation</span>
+          </button>
+          <button class="motor-btn" id="btn-sync" onclick="selectMotor('sync')">
+            <span class="btn-title">Synchronous Motor</span>
+            <span class="btn-sub">Constant Speed · Excited Magnetic Rotor</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-label">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Load Characteristics
+        </div>
+        <div class="load-grid">
+          <button class="load-btn active-R" id="lbtn-R" onclick="selectLoad('R')">Resistive <span>Heater (Active)</span></button>
+          <button class="load-btn" id="lbtn-L" onclick="selectLoad('L')">Inductive <span>Fan/Pump (Lag)</span></button>
+          <button class="load-btn" id="lbtn-C" onclick="selectLoad('C')">Capacitive <span>Capacitor (Lead)</span></button>
+          <button class="load-btn" id="lbtn-N" onclick="selectLoad('N')">No-Load <span>Friction (Unloaded)</span></button>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-label">
+          <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Drive & Power Settings
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div class="slider-header">
+              <span class="slider-label">VFD Frequency</span>
+              <span class="slider-value"><span id="freq-disp">50</span> Hz</span>
+            </div>
+            <input type="range" min="10" max="60" value="50" id="freq-slider" oninput="updateFreq(this.value)">
+          </div>
+          <div>
+            <div class="slider-header">
+              <span class="slider-label">Line Voltage</span>
+              <span class="slider-value"><span id="volt-disp">380</span> V</span>
+            </div>
+            <input type="range" min="200" max="440" value="380" id="volt-slider" oninput="updateVoltage(this.value)">
+          </div>
+          <div>
+            <div class="slider-header">
+              <span class="slider-label">Mechanical Shaft Load</span>
+              <span class="slider-value"><span id="load-disp">75</span> %</span>
+            </div>
+            <input type="range" min="0" max="120" value="75" id="load-slider" oninput="updateLoad(this.value)">
+          </div>
+          
+          <!-- SLIP / ROTOR RESISTANCE -->
+          <div id="rotor-res-container" style="transition: opacity 0.3s; padding-top: 10px; border-top: 1px solid var(--border-light);">
+            <div class="slider-header">
+              <span class="slider-label" style="color:var(--secondary)">Rotor Resistance (Slip Ctrl)</span>
+              <span class="slider-value" style="color:var(--secondary)"><span id="res-disp">1.0</span>x</span>
+            </div>
+            <input type="range" min="1" max="10" step="0.5" value="1" id="res-slider" oninput="updateRes(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <div class="fault-toggle" id="fault-btn" onclick="toggleFault()">
+        <span class="fault-label">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          L3 Phase Loss (Fault)
+        </span>
+        <div class="switch"></div>
+      </div>
+      <!-- Removed the separate run button from here -->
+    </div>
+
+    <!-- CENTER PANEL -->
+    <div class="center-panel">
+      <!-- MOTOR BUTTON CANVAS -->
+      <div class="canvas-wrap motor-canvas-wrap glass" onclick="toggleRun()" title="Click to Start/Stop Motor">
+        <div class="canvas-action-badge" id="canvas-action-badge">
+          <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> CLICK TO START
+        </div>
+        <canvas id="motor-canvas"></canvas>
+      </div>
+      
+      <div class="canvas-wrap waveform-wrap glass">
+        <div class="panel-label">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Waveform (Oscilloscope)
+        </div>
+        <canvas id="wave-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="panel-label">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        Sensor Data & Analysis
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="metric-card" style="grid-column: span 2;" onclick="showFormula('rpm')">
+          <div class="metric-name">Rotor Speed (N_r)</div>
+          <div class="metric-value"><span id="m-rpm">0</span> <span class="metric-unit">RPM</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-rpm" style="width:0%; background:var(--gradient-btn); color:var(--accent);"></div></div>
+        </div>
+
+        <div class="metric-card" style="grid-column: span 2;" onclick="showFormula('torque')">
+          <div class="metric-name">Shaft Torque (Moment)</div>
+          <div class="metric-value" style="color:var(--accent)"><span id="m-torque">0.0</span> <span class="metric-unit">Nm</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-torque" style="width:0%; background:var(--accent); color:var(--accent);"></div></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('eff')">
+          <div class="metric-name">Efficiency (η)</div>
+          <div class="metric-value"><span id="m-eff">0</span><span class="metric-unit">%</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-eff" style="width:0%; background:var(--success); color:var(--success);"></div></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('temp')">
+          <div class="metric-name">Temperature</div>
+          <div class="metric-value"><span id="m-temp">25</span><span class="metric-unit">°C</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-temp" style="width:5%; background:var(--success); color:var(--success);"></div></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('slip')">
+          <div class="metric-name">Slip (s)</div>
+          <div class="metric-value" style="color:var(--secondary)"><span id="m-slip">—</span><span class="metric-unit">%</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-slip" style="width:0%; background:var(--secondary); color:var(--secondary);"></div></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('pf')">
+          <div class="metric-name">Power Factor</div>
+          <div class="metric-value"><span id="m-pf">—</span></div>
+          <div class="gauge-wrap"><div class="gauge-fill" id="g-pf" style="width:0%; background:var(--accent); color:var(--accent);"></div></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('p')">
+          <div class="metric-name">Active Power (P)</div>
+          <div class="metric-value" style="color:var(--success)"><span id="m-p">0</span><span class="metric-unit">kW</span></div>
+        </div>
+
+        <div class="metric-card" onclick="showFormula('q')">
+          <div class="metric-name">Reactive Power (Q)</div>
+          <div class="metric-value" style="color:var(--warning)"><span id="m-q">0</span><span class="metric-unit">kVAR</span></div>
+        </div>
+      </div>
+
+      <div class="energy-box glass" id="energy-container">
+         <div class="energy-col">
+            <span class="energy-lbl"><span class="blinking-dot"></span>Total Consumption</span>
+            <span class="energy-val"><span id="m-energy">0.000</span> <span style="font-size:12px;color:var(--text-muted)">kWh</span></span>
+         </div>
+         <div class="energy-col" style="text-align: right;">
+            <span class="energy-lbl">Est. Cost ($0.15/kWh)</span>
+            <span class="energy-val" style="color:var(--warning)"><span style="font-size:14px;color:var(--text-muted)">$</span><span id="m-cost">0.00</span></span>
+         </div>
+      </div>
+
+      <div class="phasor-wrap glass">
+        <div class="panel-label" style="margin-bottom:0;">Phasor Diagram (V-I Vectors)</div>
+        <canvas id="phasor-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FORMULA MODAL -->
+<div id="formula-modal" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <svg class="icon modal-close" onclick="closeModal()" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <div class="formula-title" id="fm-title">Title</div>
+    <div class="formula-box" id="fm-formula">Formula</div>
+    <div class="formula-desc" id="fm-desc">Description goes here...</div>
+  </div>
+</div>
+
+<script>
+const state = {
+  motorType: 'async',
+  loadType: 'R',
+  voltage: 380,
+  frequency: 50,
+  loadPct: 75,
+  rotorRes: 1.0,
+  phaseLoss: false,
+  running: false,
+  temperature: 25,
+  rotorAngle: 0,
+  waveT: 0,
+  animFrame: null,
+  metrics: null,
+  
+  energyKWh: 0,
+  soundEnabled: false,
+  audioCtx: null,
+  oscNode: null,
+  gainNode: null
+};
+
+const POLES = 4;
+const NOMINAL_P = 15000;
+const AMBIENT_TEMP = 25;
+const COST_PER_KWH = 0.15; // USD
+
+// --- FORMULA LOGIC ---
+const formulas = {
+  rpm: {
+    title: 'Rotor Speed (N_r)',
+    formula: 'N_r = (120 × f / P) × (1 - s)',
+    desc: 'The actual rotational speed of the motor shaft. In induction motors, it is slightly less than the synchronous magnetic field speed due to "slip" (s). In synchronous motors, slip is 0.'
+  },
+  torque: {
+    title: 'Shaft Torque (τ)',
+    formula: 'τ = P_mech / ω_m',
+    desc: 'The rotational force produced by the motor. Calculated by dividing the mechanical power output (Watts) by the angular velocity (radians/sec).'
+  },
+  eff: {
+    title: 'Efficiency (η)',
+    formula: 'η = (P_out / P_in) × 100',
+    desc: 'The ratio of useful mechanical power output to the electrical power input. The difference represents losses such as copper losses (I²R), core losses, and mechanical friction.'
+  },
+  temp: {
+    title: 'Motor Temperature',
+    formula: 'ΔT ∝ I²R + P_core + P_friction',
+    desc: 'The operating temperature of the motor. Heavy loads or phase loss faults cause excessive current flow, dramatically increasing I²R heat losses and risking stator insulation damage.'
+  },
+  slip: {
+    title: 'Motor Slip (s)',
+    formula: 's = (N_s - N_r) / N_s',
+    desc: 'The relative difference between the synchronous speed (N_s) and actual rotor speed (N_r). It is essential for inducing current in the rotor of an induction motor.'
+  },
+  pf: {
+    title: 'Power Factor (cos φ)',
+    formula: 'PF = P / S = Active / Apparent',
+    desc: 'A measure of electrical efficiency. A higher PF means the motor draws less reactive current from the grid. Capacitive loads can compensate and improve (lead) the PF.'
+  },
+  p: {
+    title: 'Active Power (P)',
+    formula: 'P = √3 × V × I × cos(φ)',
+    desc: 'The real electrical power (kW) actually consumed by the motor to perform useful mechanical work and overcome internal losses.'
+  },
+  q: {
+    title: 'Reactive Power (Q)',
+    formula: 'Q = √3 × V × I × sin(φ)',
+    desc: 'The power (kVAR) required to maintain the magnetic fields in the motor. It does not perform mechanical work but oscillates continuously between the source and the load.'
+  }
+};
+
+function showFormula(key) {
+  const data = formulas[key];
+  if(!data) return;
+  document.getElementById('fm-title').innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> ` + data.title;
+  document.getElementById('fm-formula').textContent = data.formula;
+  document.getElementById('fm-desc').textContent = data.desc;
+  document.getElementById('formula-modal').classList.add('show');
+}
+
+function closeModal(e) {
+  document.getElementById('formula-modal').classList.remove('show');
+}
+
+function selectMotor(t) {
+  state.motorType = t;
+  document.getElementById('btn-async').classList.toggle('active', t === 'async');
+  document.getElementById('btn-sync').classList.toggle('active', t === 'sync');
+  
+  const resContainer = document.getElementById('rotor-res-container');
+  const resSlider = document.getElementById('res-slider');
+  
+  if(t === 'sync') {
+      resContainer.style.opacity = '0.3';
+      resSlider.disabled = true;
+      resSlider.value = 1;
+      updateRes(1);
+  } else {
+      resContainer.style.opacity = '1';
+      resSlider.disabled = false;
+  }
+  if (state.running) recalculate();
+}
+
+function selectLoad(t) {
+  state.loadType = t;
+  ['R','L','C','N'].forEach(k => {
+    document.getElementById('lbtn-'+k).className = 'load-btn' + (k === t ? ' active-'+k : '');
+  });
+  if (state.running) recalculate();
+}
+
+function updateVoltage(v) { state.voltage = +v; document.getElementById('volt-disp').textContent = v; if (state.running) recalculate(); }
+function updateFreq(f) { state.frequency = +f; document.getElementById('freq-disp').textContent = f; if (state.running) recalculate(); }
+function updateLoad(v) { state.loadPct = +v; document.getElementById('load-disp').textContent = v; if (state.running) recalculate(); }
+function updateRes(r) { state.rotorRes = +r; document.getElementById('res-disp').textContent = parseFloat(r).toFixed(1); if (state.running) recalculate(); }
+
+function toggleFault() {
+  state.phaseLoss = !state.phaseLoss;
+  document.getElementById('fault-btn').classList.toggle('active', state.phaseLoss);
+  const dot = document.getElementById('status-dot');
+  if (state.running) {
+    dot.className = state.phaseLoss ? 'status-dot fault' : 'status-dot active';
+    recalculate();
+  }
+}
+
+function toggleSound() {
+  state.soundEnabled = !state.soundEnabled;
+  const btn = document.getElementById('sound-btn');
+  
+  if (state.soundEnabled) {
+    btn.classList.add('active');
+    btn.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> Sound: On`;
+    if (!state.audioCtx) initAudio();
+  } else {
+    btn.classList.remove('active');
+    btn.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg> Sound: Off`;
+  }
+  updateAudioState();
+}
+
+function initAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  state.audioCtx = new AudioContext();
+  state.oscNode = state.audioCtx.createOscillator();
+  state.gainNode = state.audioCtx.createGain();
+  state.oscNode.type = 'sine';
+  state.gainNode.gain.value = 0;
+  state.oscNode.connect(state.gainNode);
+  state.gainNode.connect(state.audioCtx.destination);
+  state.oscNode.start();
+}
+
+function updateAudioState() {
+  if (!state.audioCtx) return;
+  if (state.soundEnabled && state.running && state.metrics) {
+    if(state.audioCtx.state === 'suspended') state.audioCtx.resume();
+    let baseFreq = (state.metrics.rpm / 60) * POLES * 2; 
+    if(baseFreq < 20) baseFreq = 50; 
+    state.oscNode.frequency.setTargetAtTime(baseFreq, state.audioCtx.currentTime, 0.1);
+    if (state.phaseLoss) {
+        state.oscNode.type = 'sawtooth'; 
+        state.gainNode.gain.setTargetAtTime(0.15, state.audioCtx.currentTime, 0.1);
+    } else {
+        state.oscNode.type = 'sine'; 
+        state.gainNode.gain.setTargetAtTime(0.08, state.audioCtx.currentTime, 0.2);
+    }
+  } else {
+    state.gainNode.gain.setTargetAtTime(0, state.audioCtx.currentTime, 0.1);
+  }
+}
+
+function toggleRun() {
+  state.running = !state.running;
+  const dot = document.getElementById('status-dot');
+  const badge = document.getElementById('canvas-action-badge');
+  const energyBox = document.getElementById('energy-container');
+
+  if (state.running) {
+    badge.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><rect x="6" y="6" width="12" height="12"/></svg> CLICK TO STOP';
+    badge.classList.add('running');
+    energyBox.classList.add('running');
+    dot.className = state.phaseLoss ? 'status-dot fault' : 'status-dot active';
+    recalculate();
+    animate();
+  } else {
+    badge.innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> CLICK TO START';
+    badge.classList.remove('running');
+    energyBox.classList.remove('running');
+    dot.className = 'status-dot';
+    cancelAnimationFrame(state.animFrame);
+    
+    state.temperature = AMBIENT_TEMP;
+    setMetrics({rpm:0, eff:0, pf:'—', p:0, q:0, slip:'—', temp: AMBIENT_TEMP, torque: 0});
+    
+    const tempG = document.getElementById('g-temp');
+    tempG.style.width = '5%';
+    tempG.style.background = 'var(--success)';
+    tempG.style.color = 'var(--success)';
+
+    clearCanvases();
+    drawMotor(); drawWaveform(); drawPhasor();
+  }
+  updateAudioState();
+}
+
+function calcMetrics() {
+  const {motorType, loadType, voltage, frequency, loadPct, phaseLoss, rotorRes} = state;
+  const syncSpeed = (120 * frequency) / POLES;
+  
+  let vRatio = voltage / 380;
+  let lRatio = loadPct / 100;
+  let fRatio = frequency / 50;
+
+  if (phaseLoss) { vRatio *= 0.577; lRatio *= 1.5; }
+
+  let slip, rpm, eff, pf, P, Q, targetTemp, torque;
+
+  if (motorType === 'async') {
+    const s0 = 0.02 * rotorRes; 
+    slip = loadType === 'N' ? 0.002 * rotorRes : s0 * lRatio * (1 + (1 - vRatio) * 0.5) / fRatio;
+    
+    if(phaseLoss && loadPct > 50) slip *= 3; 
+    if(slip > 1) slip = 1;
+
+    rpm = Math.max(0, Math.round(syncSpeed * (1 - slip)));
+    
+    let baseEff = loadType === 'N' ? 30 : Math.min(96, 70 + 25*lRatio - 5*lRatio*lRatio + 3*(vRatio-1));
+    let resLosses = (rotorRes - 1) * 4 * lRatio; 
+    
+    eff = Math.max(0, baseEff - resLosses);
+    eff = Math.min(99, Math.max(0, eff * vRatio * (phaseLoss ? 0.6 : 0.98)));
+
+    if (loadType === 'R')      pf = 0.85 + 0.10 * lRatio;
+    else if (loadType === 'L') pf = 0.60 + 0.10 * lRatio;
+    else if (loadType === 'C') pf = 0.90 + 0.08 * lRatio;
+    else                       pf = 0.20;
+    
+    if(phaseLoss) pf *= 0.7; 
+    pf = Math.min(1.0, pf * vRatio);
+
+  } else {
+    slip = 0;
+    const isPulledOut = phaseLoss && loadPct > 30;
+    rpm = isPulledOut ? 0 : syncSpeed;
+    
+    eff = loadType === 'N' ? 20 : Math.min(98, 78 + 18*lRatio - 3*lRatio*lRatio);
+    eff = Math.min(99, eff * vRatio * (phaseLoss ? 0.4 : 0.97));
+    if(isPulledOut) eff = 0;
+
+    if (loadType === 'R')      pf = 0.95;
+    else if (loadType === 'L') pf = 0.70;
+    else if (loadType === 'C') pf = 1.00;
+    else                       pf = 0.15;
+    
+    if(phaseLoss) pf *= 0.6;
+    pf = Math.min(1.0, pf);
+  }
+
+  const I = (NOMINAL_P * lRatio) / (Math.sqrt(3) * voltage * pf + 0.01) * (phaseLoss ? 1.7 : 1);
+  P = Math.sqrt(3) * voltage * I * pf / 1000;
+  const phi = Math.acos(Math.max(-1, Math.min(1, pf)));
+  Q = Math.sqrt(3) * voltage * I * Math.sin(phi) / 1000;
+  if (loadType === 'C') Q = -Math.abs(Q);
+
+  const lossFactor = (100 - eff) / 10;
+  targetTemp = AMBIENT_TEMP + (lRatio * 40 * lossFactor);
+  if(phaseLoss) targetTemp += 60; 
+  if(!state.running) targetTemp = AMBIENT_TEMP;
+
+  if(rpm > 0) {
+      const pMech = (P * 1000) * (eff / 100);
+      const wRad = (rpm * 2 * Math.PI) / 60;
+      torque = pMech / wRad;
+  } else {
+      torque = phaseLoss ? (P*1000)/50 : 0; 
+  }
+
+  return {
+    rpm, eff: Math.round(eff),
+    pf: pf.toFixed(2),
+    p: P.toFixed(1),
+    q: Math.abs(Q).toFixed(1),
+    slip: (slip * 100).toFixed(1),
+    torque: torque.toFixed(1),
+    pfRaw: pf,
+    phiRad: phi,
+    qSign: loadType === 'C' ? -1 : 1,
+    targetTemp,
+    syncSpeed
+  };
+}
+
+function recalculate() {
+  if (!state.running) return;
+  const m = calcMetrics();
+  state.metrics = m;
+  setMetrics(m);
+  updateAudioState();
+}
+
+function setMetrics(m) {
+  document.getElementById('m-rpm').textContent = m.rpm || 0;
+  document.getElementById('m-eff').textContent = m.eff || 0;
+  document.getElementById('m-p').textContent = m.p || 0;
+  document.getElementById('m-q').textContent = m.q || 0;
+  document.getElementById('m-torque').textContent = m.torque || 0;
+  document.getElementById('m-slip').textContent = (m.slip !== undefined && m.slip !== '—') ? m.slip : '—';
+  document.getElementById('m-pf').textContent = m.pf || '—';
+  
+  if(m.temp) document.getElementById('m-temp').textContent = m.temp;
+
+  const maxRpm = (120 * 60) / POLES; 
+  document.getElementById('g-rpm').style.width = (m.rpm ? m.rpm/maxRpm*100 : 0) + '%';
+  
+  const maxTorque = 150; 
+  document.getElementById('g-torque').style.width = (m.torque ? Math.min(100, (m.torque/maxTorque)*100) : 0) + '%';
+
+  const effGauge = document.getElementById('g-eff');
+  effGauge.style.width = (m.eff || 0) + '%';
+  let effColor = 'var(--success)';
+  if(m.eff < 80) effColor = 'var(--warning)';
+  if(m.eff < 50) effColor = 'var(--danger)';
+  effGauge.style.background = effColor;
+  effGauge.style.color = effColor;
+
+  const slipVal = parseFloat(m.slip) || 0;
+  const slipGauge = document.getElementById('g-slip');
+  if(slipGauge) {
+      slipGauge.style.width = Math.min(100, (slipVal / 25) * 100) + '%'; 
+      let slipColor = 'var(--secondary)';
+      if (slipVal > 8) slipColor = 'var(--warning)';
+      if (slipVal > 15) slipColor = 'var(--danger)';
+      slipGauge.style.background = slipColor;
+      slipGauge.style.color = slipColor;
+  }
+  
+  const pfVal = parseFloat(m.pfRaw) || 0;
+  const pfGauge = document.getElementById('g-pf');
+  if(pfGauge) {
+      pfGauge.style.width = (pfVal * 100) + '%';
+  }
+}
+
+function clearCanvases() {
+  ['motor-canvas','wave-canvas','phasor-canvas'].forEach(id => {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+  });
+}
+
+let lastT = 0;
+function animate(ts) {
+  if (!ts) ts = performance.now();
+  let dt = (ts - lastT) / 1000; 
+  if (dt < 0 || dt > 0.1) dt = 0.016; 
+  lastT = ts;
+
+  if (state.metrics) {
+    const rpmTarget = state.metrics.rpm || 0;
+    const degPerSec = rpmTarget / 60 * 360;
+    state.rotorAngle += degPerSec * dt;
+    
+    state.waveT += dt * (state.frequency / 50);
+
+    const tempTarget = state.metrics.targetTemp || AMBIENT_TEMP;
+    state.temperature += (tempTarget - state.temperature) * dt * 0.1; 
+    document.getElementById('m-temp').textContent = Math.round(state.temperature);
+    
+    const tempPct = Math.min(100, Math.max(0, (state.temperature - 20) / 100 * 100));
+    const tempG = document.getElementById('g-temp');
+    tempG.style.width = tempPct + '%';
+    
+    let tempColor = 'var(--success)';
+    if(state.temperature > 80) tempColor = 'var(--warning)';
+    if(state.temperature > 110) tempColor = 'var(--danger)';
+    tempG.style.background = tempColor;
+    tempG.style.color = tempColor;
+
+    const timeScaleFactor = 60; 
+    const hoursElapsed = (dt * timeScaleFactor) / 3600;
+    state.energyKWh += parseFloat(state.metrics.p) * hoursElapsed;
+    
+    document.getElementById('m-energy').textContent = state.energyKWh.toFixed(3);
+    document.getElementById('m-cost').textContent = (state.energyKWh * COST_PER_KWH).toFixed(2);
+  }
+
+  drawMotor();
+  drawWaveform();
+  drawPhasor();
+
+  state.animFrame = requestAnimationFrame(animate);
+}
+
+const cColors = {
+  grid: 'rgba(255, 255, 255, 0.05)',
+  statorRing: '#1A0508',
+  statorBg: '#0A0204',
+  rotor: '#1A0508',
+  rotorAcc: '#330A14',
+  blue: '#00E5FF',   
+  red: '#FF1744',    
+  green: '#00FF66',  
+  orange: '#FFEA00', 
+  purple: '#B100FF', 
+  text: '#FFFFFF',
+  dead: '#331A20',
+  bordo: '#E31C47'
+};
+
+function drawMotor() {
+  const canvas = document.getElementById('motor-canvas');
+  if (!canvas) return;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2, cy = h / 2;
+  const isSync = state.motorType === 'sync';
+  const scale = Math.min(w, h) / 360;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const R = 140;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.strokeStyle = cColors.statorRing;
+  ctx.lineWidth = 14;
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 15;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  const nSlots = 36;
+  for (let i = 0; i < nSlots; i++) {
+    const a = (i / nSlots) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo((R-7)*Math.cos(a), (R-7)*Math.sin(a));
+    ctx.lineTo((R+7)*Math.cos(a), (R+7)*Math.sin(a));
+    ctx.strokeStyle = cColors.statorBg;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  const phaseColors = [cColors.red, cColors.blue, cColors.green];
+  const phaseName = ['L1','L2','L3'];
+  for (let p = 0; p < 3; p++) {
+    const isLostPhase = state.phaseLoss && p === 2; 
+    const a0 = (p / 3) * Math.PI * 2 - Math.PI / 2;
+    
+    for (let slot = 0; slot < 6; slot++) {
+      const a = a0 + (slot - 2.5) * 0.09;
+      ctx.beginPath();
+      ctx.moveTo((R-14)*Math.cos(a), (R-14)*Math.sin(a));
+      ctx.lineTo((R+4)*Math.cos(a),  (R+4)*Math.sin(a));
+      
+      if (isLostPhase && state.running) {
+         ctx.globalAlpha = 0.3;
+         ctx.strokeStyle = cColors.dead;
+      } else {
+         const intensity = state.running ? 0.5 + 0.5*Math.sin(state.waveT*314 + p*2.09) : 0.2;
+         ctx.globalAlpha = intensity;
+         ctx.strokeStyle = phaseColors[p];
+         if(state.running) {
+             ctx.shadowColor = phaseColors[p];
+             ctx.shadowBlur = intensity * 20; 
+         }
+      }
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+    
+    const lx = (R+28)*Math.cos(a0), ly = (R+28)*Math.sin(a0);
+    ctx.fillStyle = isLostPhase && state.running ? cColors.dead : phaseColors[p];
+    ctx.font = '800 14px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(phaseName[p], lx, ly);
+    
+    if(isLostPhase && state.running) ctx.fillText("❌", lx+18, ly);
+  }
+
+  ctx.beginPath();
+  ctx.arc(0, 0, R - 18, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const rotRad = state.rotorAngle * Math.PI / 180;
+  const rR = R - 24;
+
+  ctx.rotate(rotRad);
+
+  if(state.running && state.phaseLoss) ctx.translate(Math.random()*4 - 2, Math.random()*4 - 2);
+
+  if (isSync) {
+    ctx.beginPath();
+    ctx.arc(0, 0, rR, 0, Math.PI * 2);
+    ctx.fillStyle = cColors.rotor;
+    ctx.fill();
+    for (let p = 0; p < 4; p++) {
+      const pa = p * Math.PI / 2;
+      ctx.save();
+      ctx.rotate(pa);
+      ctx.beginPath();
+      ctx.arc(0, 0, rR, -0.55, 0.55);
+      ctx.lineTo(rR*0.6*Math.cos(0.55), rR*0.6*Math.sin(0.55));
+      ctx.arc(0, 0, rR*0.6, 0.55, -0.55, true);
+      ctx.closePath();
+      ctx.fillStyle = cColors.rotorAcc;
+      ctx.fill();
+      
+      ctx.fillStyle = state.running ? cColors.bordo : 'rgba(227, 28, 71, 0.1)';
+      if(state.running) { ctx.shadowColor = cColors.bordo; ctx.shadowBlur = 15; }
+      ctx.fillRect(-6, rR*0.62, 12, rR*0.32);
+      ctx.restore();
+    }
+    
+    const hubR = rR * 0.25;
+    ctx.beginPath(); ctx.arc(0, 0, hubR, 0, Math.PI*2);
+    ctx.fillStyle = '#0A0204'; ctx.fill();
+    ctx.strokeStyle = cColors.bordo; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, hubR*0.3, 0, Math.PI*2);
+    ctx.fillStyle = cColors.bordo; ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, rR, 0, Math.PI * 2);
+    ctx.fillStyle = cColors.rotor;
+    ctx.fill();
+    
+    const nBars = 28;
+    const barR = rR - 4;
+    const slipVal = parseFloat(state.metrics?.slip) / 100 || 0;
+    for (let b = 0; b < nBars; b++) {
+      const ba = (b / nBars) * Math.PI * 2;
+      const iGlow = state.running ? Math.abs(Math.sin(state.waveT * 314 * slipVal + b * 0.22)) : 0;
+      ctx.beginPath();
+      ctx.arc(0, 0, barR, ba - 0.06, ba + 0.06);
+      ctx.lineTo(0, 0);
+      ctx.fillStyle = state.running ? `rgba(227, 28, 71, ${0.1 + iGlow * 0.8})` : 'rgba(227, 28, 71, 0.1)';
+      if (state.running) { ctx.shadowColor = cColors.bordo; ctx.shadowBlur = iGlow * 15; }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.beginPath(); ctx.arc(0, 0, barR+2, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(227, 28, 71, 0.1)'; ctx.lineWidth = 2; ctx.stroke();
+    
+    const numBlades = 7;
+    const hubR = rR * 0.25;
+    ctx.fillStyle = state.running ? 'rgba(227, 28, 71, 0.8)' : 'rgba(227, 28, 71, 0.15)';
+    if (state.running) { ctx.shadowColor = cColors.bordo; ctx.shadowBlur = 12; }
+    for (let i = 0; i < numBlades; i++) {
+        const angle = (i / numBlades) * Math.PI * 2;
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(hubR, 0);
+        ctx.quadraticCurveTo(rR * 0.6, rR * 0.3, rR * 0.85, rR * 0.1);
+        ctx.quadraticCurveTo(rR * 0.5, -rR * 0.1, hubR, -hubR * 0.5);
+        ctx.fill();
+        ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+
+    ctx.beginPath(); ctx.arc(0, 0, hubR, 0, Math.PI*2);
+    ctx.fillStyle = '#0A0204'; ctx.fill();
+    ctx.strokeStyle = cColors.bordo; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, hubR*0.3, 0, Math.PI*2);
+    ctx.fillStyle = cColors.bordo; ctx.fill();
+  }
+
+  ctx.restore();
+
+  if (state.running && state.metrics) {
+    ctx.fillStyle = cColors.text;
+    ctx.font = '800 16px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+    
+    let text = state.metrics.rpm + ' RPM';
+    if(state.metrics.rpm === 0 && state.phaseLoss) {
+        text = 'LOCKED'; ctx.fillStyle = cColors.red;
+    }
+
+    ctx.fillText(text, cx, h - 15);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawWaveform() {
+  const canvas = document.getElementById('wave-canvas');
+  if (!canvas) return;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  if (!state.running || !state.metrics) return;
+
+  const m = state.metrics;
+  const phi = m.phiRad || 0;
+  const cy = h / 2;
+
+  ctx.strokeStyle = cColors.grid;
+  ctx.lineWidth = 1;
+  const gridSpacing = 40;
+  for (let x = 0; x < w; x += gridSpacing) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += gridSpacing) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.stroke();
+
+  const cycles = 2.5;
+  const amp = h * 0.35;
+
+  const drawSine = (color, phaseOffset, amplitudeMod, isJittery = false) => {
+      ctx.beginPath();
+      for (let px = 0; px < w; px++) {
+        const t = (px / w) * cycles * 2 * Math.PI + state.waveT * 8 - phaseOffset;
+        let yOffset = amplitudeMod * Math.sin(t);
+        if (isJittery) yOffset += (Math.random() - 0.5) * 8; 
+        const y = cy - yOffset;
+        px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+  };
+
+  const vColors = [cColors.red, cColors.blue, cColors.green];
+  for(let i=0; i<3; i++) {
+      const isLost = state.phaseLoss && i === 2;
+      const phOffset = i * (2 * Math.PI / 3);
+      drawSine(isLost ? cColors.dead : vColors[i], phOffset, isLost ? amp*0.1 : amp, isLost);
+  }
+
+  const currColors = {R:cColors.orange, L:cColors.blue, C:cColors.green, N:cColors.purple};
+  let currAmp = amp * 0.7;
+  if(state.phaseLoss) currAmp *= 1.5; 
+  if(currAmp > cy - 5) currAmp = cy - 5; 
+  
+  ctx.setLineDash([6, 6]);
+  drawSine(currColors[state.loadType] || cColors.orange, phi, currAmp);
+  ctx.setLineDash([]);
+
+  ctx.font = '700 12px Outfit, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = cColors.text; ctx.fillText('V (Voltage)', 10, 10);
+  ctx.fillStyle = currColors[state.loadType] || cColors.orange; ctx.fillText('I (Current)', 10, 26);
+}
+
+function drawPhasor() {
+  const canvas = document.getElementById('phasor-canvas');
+  if (!canvas) return;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  if (!state.running || !state.metrics) return;
+
+  const m = state.metrics;
+  const phi = (m.phiRad || 0) * (state.loadType === 'C' ? -1 : 1);
+  const cx = w / 2, cy = h / 2;
+  const len = Math.min(w, h) * 0.35;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, len, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-len-10,cy); ctx.lineTo(cx+len+10,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-len-10); ctx.lineTo(cx,cy+len+10); ctx.stroke();
+
+  const drawArrow = (ax, ay, bx, by, color, lbl) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = color; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    
+    const a = Math.atan2(by - ay, bx - ax);
+    const hs = 10;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - hs*Math.cos(a-0.4), by - hs*Math.sin(a-0.4));
+    ctx.lineTo(bx - hs*Math.cos(a+0.4), by - hs*Math.sin(a+0.4));
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    if (lbl) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '800 13px Outfit, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, bx + 18*Math.cos(a), by + 18*Math.sin(a));
+    }
+  };
+
+  drawArrow(cx, cy, cx+len, cy, cColors.blue, 'V');
+  const currColors = {R:cColors.orange, L:cColors.blue, C:cColors.green, N:cColors.purple};
+  let iLen = len*0.7;
+  if(state.phaseLoss) iLen = len; 
+  drawArrow(cx, cy, cx+iLen*Math.cos(-phi), cy+iLen*Math.sin(-phi), currColors[state.loadType]||cColors.orange, 'I');
+
+  if (Math.abs(phi) > 0.05) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, len*0.4, -phi, 0);
+    ctx.strokeStyle = cColors.text;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = cColors.text;
+    ctx.font = '700 14px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('φ', cx + len*0.45, cy - 12);
+  }
+}
+
+window.addEventListener('resize', () => {
+  if (!state.running) { drawMotor(); drawWaveform(); drawPhasor(); }
+});
+
+recalculate();
+drawMotor();
+drawWaveform();
+drawPhasor();
+</script>
+</body>
+</html>
